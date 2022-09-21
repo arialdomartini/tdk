@@ -46,7 +46,7 @@ public class LedgerTest
             Transaction.Create(from, to, Amount.Of(amount)));
 
         var ledger =
-            Ledger.WithBlocks(Create(block));
+            Ledger.WithBlockchain(block);
 
         var balance = NeatCoin.Balance(ledger, from);
 
@@ -59,9 +59,9 @@ public class LedgerTest
     void transaction_increases_balance_to_receiver(string from, string to, int amount)
     {
         var ledger =
-            Ledger.WithBlocks(
-                    Block.WithTransactions(
-                        Transaction.Create(from, to, Amount.Of(amount))));
+            Ledger.WithBlockchain(
+                Block.WithTransactions(
+                    Transaction.Create(from, to, Amount.Of(amount))));
 
         var balance = NeatCoin.Balance(ledger, to);
 
@@ -72,8 +72,8 @@ public class LedgerTest
     [InlineData("alice", "alice", 42)]
     void sending_money_to_self_does_not_change_balance(string from, string to, int amount)
     {
-         var ledger = 
-             Ledger.WithBlocks(
+        var ledger =
+            Ledger.WithBlockchain(
                 Block.WithTransactions(
                     Transaction.Create(from, to, Amount.Of(amount))));
 
@@ -86,18 +86,21 @@ public class LedgerTest
     void multiple_transactions()
     {
         var block1 =
-            Block.WithTransactions(
-                Transaction.Create("bob", "alice", Amount.Of(10)),
-                Transaction.Create("bob", "alice", Amount.Of(20)),
-                Transaction.Create("alice", "bob", Amount.Of(5)));
+            NeatCoin.Hashed(
+                Block.WithTransactions(
+                    Transaction.Create("bob", "alice", Amount.Of(10)),
+                    Transaction.Create("bob", "alice", Amount.Of(20)),
+                    Transaction.Create("alice", "bob", Amount.Of(5))));
 
         var block2 =
-            Block.WithTransactions(
-                Transaction.Create("bob", "alice", Amount.Of(100)),
-                Transaction.Create("dan", "alice", Amount.Of(20)));
+            NeatCoin.Hashed(
+                Block.WithTransactions(
+                        Transaction.Create("bob", "alice", Amount.Of(100)),
+                        Transaction.Create("dan", "alice", Amount.Of(20)))
+                    .HavingParent(block1));
 
         var ledger =
-            Ledger.WithBlocks(block1, block2);
+            Ledger.WithBlockchain(block1, block2);
 
         var balanceBob = NeatCoin.Balance(ledger, "bob");
         Assert.Equal(-10 - 20 + 5 - 100, balanceBob.Value);
@@ -138,13 +141,28 @@ public class LedgerTest
             Assert.Equal(b.Hash, NeatCoin.CalculateBlockHash(b)));
     }
 
+    [Fact]
+    void blocks_with_different_parent_have_different_hash_values()
+    {
+        var block1 =
+            NeatCoin.Hashed(
+                Block1);
+
+        var block2 =
+            NeatCoin.Hashed(
+                Block1
+                    .HavingParent(block1));
+
+        Assert.NotEqual(block1.Hash, block2.Hash);
+    }
+
     public static IEnumerable<object[]> InvalidBlocks() =>
         new[]
         {
             new object[] { Block.Empty },
             new object[] { Block.WithTransactions(Transaction.Create("bob", "alice", Amount.Of(44))) },
-            new object[] { new Block(Empty, Hash.Undefined) },
-            new object[] { new Block(Empty, new Hash("random-hash")) }
+            new object[] { new Block(Empty, Hash.Undefined, Hash.Undefined) },
+            new object[] { new Block(Empty, new Hash("random-hash"), Hash.Undefined) }
         };
 
     public static IEnumerable<object[]> ValidBlocks() =>
@@ -183,20 +201,20 @@ public class LedgerTest
     {
         Assert.False(NeatCoin.IsValid(block));
     }
-    
+
     [Fact]
     void blocks_can_be_retrieved_by_hash()
     {
         var empty = NeatCoin.Hashed(Block.Empty);
-        var block1 = NeatCoin.Hashed(Block1);
-        var block2 = NeatCoin.Hashed(Block2);
+        var block1 = NeatCoin.Hashed(Block1.HavingParent(empty));
+        var block2 = NeatCoin.Hashed(Block2.HavingParent(block1));
 
-        var ledger = Ledger.WithBlocks(empty, block1, block2);
-        
-        ledger.Blocks.ForEach(block =>
+        var ledger = Ledger.WithBlockchain(empty, block1, block2);
+
+        ledger.Blockchain.ForEach(block =>
         {
             var found = NeatCoin.GetBlock(ledger, block.Hash);
-            
+
             Assert.Equal(block, found);
         });
     }
@@ -207,8 +225,59 @@ public class LedgerTest
         var empty = NeatCoin.Hashed(Block.Empty);
         var block1 = NeatCoin.Hashed(Block1);
 
-        var ledger = Ledger.WithBlocks(empty, block1);
-        
+        var ledger = Ledger.WithBlockchain(empty, block1);
+
         Assert.Null(NeatCoin.GetBlock(ledger, "not-existing"));
+    }
+
+    [Fact]
+    void blocks_can_be_retrieved_by_parent_hash()
+    {
+        var empty = NeatCoin.Hashed(Block.Empty);
+        var block1 = NeatCoin.Hashed(Block1.HavingParent(empty));
+        var block2 = NeatCoin.Hashed(Block2.HavingParent(block1));
+
+        var ledger = Ledger.WithBlockchain(empty, block1, block2);
+
+        Assert.Equal(block1, NeatCoin.FindChildOf(ledger, empty.Hash));
+        Assert.Equal(block2, NeatCoin.FindChildOf(ledger, block1.Hash));
+    }
+
+    [Fact]
+    void origin_block_has_no_parent()
+    {
+        var block1 = NeatCoin.Hashed(Block1);
+        var empty = NeatCoin.Hashed(Block.Empty.HavingParent(block1));
+        var block2 = NeatCoin.Hashed(Block2.HavingParent(block1));
+
+        var ledger = Ledger.WithBlockchain(empty, block1, block2);
+
+        var origin = NeatCoin.Origin(ledger);
+
+        Assert.Equal(block1, origin);
+        Assert.Equal(string.Empty, origin.Parent);
+    }
+
+    [Fact]
+    void find_origin()
+    {
+        var block1 =
+            NeatCoin.Hashed(
+                Block.WithTransactions(
+                    Transaction.Create("bob", "alice", Amount.Of(10)),
+                    Transaction.Create("bob", "alice", Amount.Of(20)),
+                    Transaction.Create("alice", "bob", Amount.Of(5))));
+
+        var block2 =
+            NeatCoin.Hashed(
+                Block.WithTransactions(
+                        Transaction.Create("bob", "alice", Amount.Of(100)),
+                        Transaction.Create("dan", "alice", Amount.Of(20)))
+                    .HavingParent(block1));
+
+        var ledger =
+            Ledger.WithBlockchain(block1, block2);
+
+        Assert.Equal(block1, NeatCoin.Origin(ledger));
     }
 }

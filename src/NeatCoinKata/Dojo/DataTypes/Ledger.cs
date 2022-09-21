@@ -2,14 +2,14 @@ using System.Collections.Immutable;
 
 namespace NeatCoinKata.Dojo.DataTypes;
 
-internal record Ledger(ImmutableList<Block> Blocks)
+internal record Ledger(ImmutableList<Block> Blockchain)
 {
     internal static Ledger Empty => 
-        WithBlocks();
+        WithBlockchain(ImmutableList<Block>.Empty);
 
-    internal static Ledger WithBlocks(params Block[] blocks) => 
-        WithBlocks(blocks.ToImmutableList());
-    
-    internal static Ledger WithBlocks(ImmutableList<Block> blocks) => 
+    internal static Ledger WithBlockchain(params Block[] blocks) => 
+        WithBlockchain(blocks.ToImmutableList());
+
+    private static Ledger WithBlockchain(ImmutableList<Block> blocks) => 
         new(blocks);
 }
