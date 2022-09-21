@@ -1,18 +1,24 @@
+using System.Linq;
 using NeatCoinKata.Dojo.DataTypes;
 
 namespace NeatCoinKata.Dojo;
 
 internal static class NeatCoin
 {
-    internal static Amount Balance(Ledger ledger, Account account)
-    {
-        if(ledger.Transaction == null) return Amount.Zero;
-        
-        var value = ledger.Transaction.Amount.Value;
+    internal static Amount Balance(Ledger ledger, Account account) =>
+        ledger.Transactions.Aggregate(
+            Amount.Zero,
+            (sum, transaction) =>
+                sum + Calculate(transaction, account));
 
-        var given = ledger.Transaction?.From == account? value: 0;
-        var received = ledger.Transaction?.To == account? value: 0;
-        
-        return Amount.Of(received - given);
+    private static Amount Calculate(Transaction transaction, Account account)
+    {
+        var received =
+            account == transaction.To ? transaction.Amount : Amount.Zero;
+
+        var sent =
+            account == transaction.From ? transaction.Amount : Amount.Zero;
+
+        return received - sent;
     }
 }

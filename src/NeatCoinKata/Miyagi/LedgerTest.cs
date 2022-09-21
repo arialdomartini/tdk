@@ -1,6 +1,7 @@
 ﻿using NeatCoinKata.Dojo;
 using NeatCoinKata.Dojo.DataTypes;
 using Xunit;
+using static System.Collections.Immutable.ImmutableList;
 
 namespace NeatCoinKata.Miyagi;
 
@@ -61,4 +62,23 @@ public class LedgerTest
         
         Assert.Equal(Amount.Of(0), balance);
     }
+    
+        
+    [Fact]
+    void multiple_transactions()
+    {
+        var ledger =
+            Ledger.WithTransactions(
+                Create(
+                    Transaction.Create("bob", "alice", Amount.Of(10)),
+                    Transaction.Create("bob", "alice", Amount.Of(20)),
+                    Transaction.Create("alice", "bob", Amount.Of(5))));
+        
+        var balanceBob = NeatCoin.Balance(ledger, "bob");
+        Assert.Equal(-10 - 20 + 5, balanceBob.Value);
+        
+        var balanceAlice = NeatCoin.Balance(ledger, "alice");
+        Assert.Equal(10 + 20 - 5, balanceAlice.Value);
+    }
+
 }
