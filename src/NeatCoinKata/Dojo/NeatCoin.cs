@@ -32,4 +32,7 @@ internal static class NeatCoin
         Block.Create(
             block.Transactions, 
             CalculateBlockHash(block));
+
+    internal static bool IsValid(Block block) => 
+        Hashed(block).Hash == block.Hash;
 }
