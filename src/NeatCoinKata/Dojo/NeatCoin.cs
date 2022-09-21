@@ -35,4 +35,7 @@ internal static class NeatCoin
 
     internal static bool IsValid(Block block) => 
         Hashed(block).Hash == block.Hash;
+
+    public static Block GetBlock(Ledger ledger, Hash hash) => 
+        ledger.Blocks.SingleOrDefault(b => b.Hash == hash);
 }
