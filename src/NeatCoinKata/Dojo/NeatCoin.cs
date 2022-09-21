@@ -24,4 +24,12 @@ internal static class NeatCoin
 
         return received - sent;
     }
+
+    internal static Hash CalculateBlockHash(Block block) => 
+        CryptographicHash.Hash(new { block.Transactions });
+
+    internal static Block Hashed(Block block) =>
+        Block.Create(
+            block.Transactions, 
+            CalculateBlockHash(block));
 }
