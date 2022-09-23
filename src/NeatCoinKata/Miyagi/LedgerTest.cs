@@ -1,12 +1,25 @@
 ﻿using System.Collections.Immutable;
+using System.Linq;
 using NeatCoinKata.Dojo;
 using NeatCoinKata.Dojo.DataTypes;
 using Xunit;
+using static System.Collections.Immutable.ImmutableList;
 
 namespace NeatCoinKata.Miyagi;
 
 public class LedgerTest
 {
+    private static Block Block1 =>
+        Block.WithTransactions(
+            Transaction.Create("bob", "alice", Amount.Of(10)),
+            Transaction.Create("bob", "alice", Amount.Of(20)),
+            Transaction.Create("alice", "bob", Amount.Of(5)));
+
+    private static Block Block2 =>
+        Block.WithTransactions(
+            Transaction.Create("bob", "alice", Amount.Of(100)),
+            Transaction.Create("dan", "alice", Amount.Of(20)));
+
     [Theory]
     [InlineData("alice")]
     [InlineData("bob")]
@@ -31,7 +44,7 @@ public class LedgerTest
             Transaction.Create(from, to, Amount.Of(amount)));
 
         var ledger =
-            Ledger.WithBlocks(ImmutableList.Create(block));
+            Ledger.WithBlocks(Create(block));
 
         var balance = NeatCoin.Balance(ledger, from);
 
@@ -70,12 +83,14 @@ public class LedgerTest
     [Fact]
     void multiple_transactions()
     {
-        var block1 = Block.WithTransactions(
+        var block1 =
+            Block.WithTransactions(
                 Transaction.Create("bob", "alice", Amount.Of(10)),
                 Transaction.Create("bob", "alice", Amount.Of(20)),
                 Transaction.Create("alice", "bob", Amount.Of(5)));
 
-        var block2 = Block.WithTransactions(
+        var block2 =
+            Block.WithTransactions(
                 Transaction.Create("bob", "alice", Amount.Of(100)),
                 Transaction.Create("dan", "alice", Amount.Of(20)));
 
@@ -87,8 +102,37 @@ public class LedgerTest
 
         var balanceAlice = NeatCoin.Balance(ledger, "alice");
         Assert.Equal(10 + 20 - 5 + 100 + 20, balanceAlice.Value);
-        
+
         var balanceDan = NeatCoin.Balance(ledger, "dan");
-        Assert.Equal(- 20, balanceDan.Value);
+        Assert.Equal(-20, balanceDan.Value);
+    }
+
+    [Fact]
+    void blocks_are_hashed_generating_unique_hashes()
+    {
+        var blocks =
+            Create(
+                Block.Empty,
+                Block1,
+                Block2);
+
+        var hashes = blocks.Select(NeatCoin.CalculateBlockHash).ToImmutableList();
+
+        Assert.Equal(hashes.Count, hashes.Distinct().Count());
+    }
+
+    [Fact]
+    void hash_is_included_in_block()
+    {
+        var blocks =
+            Create(
+                Block.Empty,
+                Block1,
+                Block2);
+
+        var hashed = blocks.Select(NeatCoin.Hashed).ToImmutableList();
+
+        hashed.ForEach(b =>
+            Assert.Equal(b.Hash, NeatCoin.CalculateBlockHash(b)));
     }
 }
