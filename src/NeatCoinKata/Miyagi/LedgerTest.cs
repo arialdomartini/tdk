@@ -28,8 +28,7 @@ public class LedgerTest
     void transaction_decreases_balance_to_sender(string from, string to, int amount)
     {
         var ledger =
-            Ledger.WithTransaction(
-                Transaction.Create(from, to, Amount.Of(amount)));
+            Ledger.WithTransactions(Create(Transaction.Create(from, to, Amount.Of(amount))));
         
         var balance = NeatCoin.Balance(ledger, from);
         
@@ -42,8 +41,7 @@ public class LedgerTest
     void transaction_increases_balance_to_receiver(string from, string to, int amount)
     {
         var ledger =
-            Ledger.WithTransaction(
-                Transaction.Create(from, to, Amount.Of(amount)));
+            Ledger.WithTransactions(Create(Transaction.Create(from, to, Amount.Of(amount))));
         
         var balance = NeatCoin.Balance(ledger, to);
         
@@ -55,8 +53,7 @@ public class LedgerTest
     void sending_money_to_self_does_not_change_balance(string from, string to, int amount)
     {
         var ledger =
-            Ledger.WithTransaction(
-                Transaction.Create(from, to, Amount.Of(amount)));
+            Ledger.WithTransactions(Create(Transaction.Create(from, to, Amount.Of(amount))));
         
         var balance = NeatCoin.Balance(ledger, to);
         
