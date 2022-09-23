@@ -183,4 +183,32 @@ public class LedgerTest
     {
         Assert.False(NeatCoin.IsValid(block));
     }
+    
+    [Fact]
+    void blocks_can_be_retrieved_by_hash()
+    {
+        var empty = NeatCoin.Hashed(Block.Empty);
+        var block1 = NeatCoin.Hashed(Block1);
+        var block2 = NeatCoin.Hashed(Block2);
+
+        var ledger = Ledger.WithBlocks(empty, block1, block2);
+        
+        ledger.Blocks.ForEach(block =>
+        {
+            var found = NeatCoin.GetBlock(ledger, block.Hash);
+            
+            Assert.Equal(block, found);
+        });
+    }
+
+    [Fact]
+    void not_found_blocks_return_null()
+    {
+        var empty = NeatCoin.Hashed(Block.Empty);
+        var block1 = NeatCoin.Hashed(Block1);
+
+        var ledger = Ledger.WithBlocks(empty, block1);
+        
+        Assert.Null(NeatCoin.GetBlock(ledger, "not-existing"));
+    }
 }
