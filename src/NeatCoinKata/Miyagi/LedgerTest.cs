@@ -1,9 +1,11 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using NeatCoinKata.Dojo;
 using NeatCoinKata.Dojo.DataTypes;
 using Xunit;
 using static System.Collections.Immutable.ImmutableList;
+using static System.Collections.Immutable.ImmutableList<NeatCoinKata.Dojo.Transaction>;
 
 namespace NeatCoinKata.Miyagi;
 
@@ -134,5 +136,51 @@ public class LedgerTest
 
         hashed.ForEach(b =>
             Assert.Equal(b.Hash, NeatCoin.CalculateBlockHash(b)));
+    }
+
+    public static IEnumerable<object[]> InvalidBlocks() =>
+        new[]
+        {
+            new object[] { Block.Empty },
+            new object[] { Block.WithTransactions(Transaction.Create("bob", "alice", Amount.Of(44))) },
+            new object[] { new Block(Empty, Hash.Undefined) },
+            new object[] { new Block(Empty, new Hash("random-hash")) }
+        };
+
+    public static IEnumerable<object[]> ValidBlocks() =>
+        new[]
+        {
+            new object[]
+            {
+                NeatCoin.Hashed(
+                    Block.Empty)
+            },
+            new object[]
+            {
+                NeatCoin.Hashed(
+                    Block.WithTransactions(Transaction.Create("bob", "alice", Amount.Of(44))))
+            },
+            new object[]
+            {
+                NeatCoin.Hashed(
+                    Block.WithTransactions(
+                        Transaction.Create("bob", "alice", Amount.Of(10)),
+                        Transaction.Create("bob", "alice", Amount.Of(20)),
+                        Transaction.Create("alice", "bob", Amount.Of(5))))
+            }
+        };
+
+    [Theory]
+    [MemberData(nameof(ValidBlocks))]
+    internal void block_is_valid_if_matches_its_hash(Block block)
+    {
+        Assert.True(NeatCoin.IsValid(block));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidBlocks))]
+    internal void block_is_not_valid_if_it_does_not_match_its_hash(Block block)
+    {
+        Assert.False(NeatCoin.IsValid(block));
     }
 }
